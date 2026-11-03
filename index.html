@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>درع غابات سوريا - غرفة العمليات</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* ===== جميع الأنماط ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Tahoma', system-ui, sans-serif;
+        }
+        body {
+            background: #0a0f1a;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+            z-index: 1;
+        }
+        #splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #0b2a1e, #1a3a2a);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+            transition: opacity 0.8s ease;
+        }
+        #splash.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #splash h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-shadow: 0 0 30px rgba(0, 255, 100, 0.3);
+            margin-bottom: 10px;
+        }
+        #splash h1 span {
+            color: #7ddf9a;
+        }
+        #splash p {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-top: 5px;
+            letter-spacing: 4px;
+        }
+        #splash .sub {
+            font-size: 0.9rem;
+            margin-top: 30px;
+            border-top: 1px solid #3a6a4a;
+            padding-top: 20px;
+            width: 60%;
+            color: #b0d0b0;
+        }
+        #splash .loader {
+            margin-top: 40px;
+            width: 50px;
+            height: 50px;
+            border: 4px solid #2a5a3a;
+            border-top: 4px solid #7ddf9a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px;
+            z-index: 999;
+            pointer-events: none;
+            flex-wrap: wrap;
+        }
+        .control-panel button,
+        .control-panel select,
+        .control-panel input {
+            pointer-events: auto;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+            transition: all 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 38px;
+            background: #2a3a32;
+        }
+        .control-panel button:active {
+            transform: scale(0.94);
+        }
+        .btn-gps {
+            background: #0d7c9e;
+        }
+        .btn-sms {
+            background: #2e7d32;
+        }
+        .btn-wa {
+            background: #25d366;
+        }
+        .btn-add {
+            background: #f57c00;
+        }
+        .control-panel select {
+            background: #37474f;
+            color: #fff;
+            border: 1px solid #4a6a4a;
+            padding: 0 12px;
+            font-weight: bold;
+            min-width: 70px;
+            appearance: auto;
+        }
+        #locStatus {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            padding: 6px 18px;
+            border-radius: 40px;
+            color: #7ddf9a;
+            font-size: 0.8rem;
+            z-index: 999;
+            display: none;
+            border: 1px solid #2a5a3a;
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+        }
+        #reportPopup {
+            position: absolute;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 20, 15, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid #3a6a4a;
+            border-radius: 20px;
+            padding: 18px 22px;
+            width: 92%;
+            max-width: 400px;
+            z-index: 1000;
+            color: #fff;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            display: none;
+            transition: all 0.3s;
+        }
+        #reportPopup.show {
+            display: block;
+        }
+        #reportPopup h3 {
+            color: #7ddf9a;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #2a5a3a;
+            padding-bottom: 6px;
+        }
+        #reportPopup .info-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+        #reportPopup .info-line strong {
+            color: #fff;
+        }
+        #reportPopup .link-area {
+            margin-top: 10px;
+            background: #0f1f16;
+            padding: 6px 10px;
+            border-radius: 10px;
+            border: 1px solid #3a6a4a;
+            font-size: 0.65rem;
+            color: #7ddf9a;
+            word-break: break-all;
+            direction: ltr;
+            text-align: left;
+            display: none;
+        }
+        #reportPopup .link-area.show {
+            display: block;
+        }
+        #reportPopup .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        #reportPopup .actions button {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 0.75rem;
+            color: #fff;
+            cursor: pointer;
+            min-width: 60px;
+            transition: 0.2s;
+        }
+        #reportPopup .actions button:hover {
+            transform: scale(0.95);
+            opacity: 0.9;
+        }
+        .btn-sms-popup {
+            background: #2e7d32;
+        }
+        .btn-wa-popup {
+            background: #25d366;
+        }
+        .btn-copy-popup {
+            background: #0d7c9e;
+        }
+        .btn-copy-msg-popup {
+            background: #6a1b9a;
+        }
+        .btn-close-popup {
+            background: #555;
+            flex: 0.4;
+        }
+        #addOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(6px);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        #addOverlay.active {
+            display: flex;
+        }
+        .add-box {
+            background: #1a2a22;
+            border-radius: 24px;
+            padding: 28px 22px;
+            max-width: 340px;
+            width: 90%;
+            border: 1px solid #3a6a4a;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+            text-align: center;
+        }
+        .add-box h3 {
+            color: #f57c00;
+            margin-bottom: 8px;
+        }
+        .add-box p {
+            color: #aaa;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+        .add-box input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #4a6a4a;
+            background: #0f1f16;
+            color: #fff;
+            font-size: 1rem;
+            text-align: center;
+            letter-spacing: 4px;
+            margin-bottom: 14px;
+            direction: ltr;
+        }
+        .add-box .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        .add-box .btn-row button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .btn-confirm-add {
+            background: #f57c00;
+            color: #fff;
+        }
+        .btn-cancel-add {
+            background: #444;
+            color: #fff;
+        }
+        .add-box .error-msg {
+            color: #f44336;
+            font-size: 0.8rem;
+            margin: -6px 0 12px;
+            display: none;
+        }
+        .custom-station-icon {
+            background: transparent;
+            border: none;
+        }
+        .station-label {
+            background: rgba(20, 40, 30, 0.9);
+            border: 1px solid #f57c00;
+            border-radius: 14px;
+            padding: 1px 8px;
+            color: #fff;
+            font-size: 0.55rem;
+            font-weight: bold;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+            transition: all 0.3s;
+        }
+        /* --- تأثير المنطقة المبلغ عنها (وامض أحمر) --- */
+        .station-label.active-alert {
+            border: 2px solid #ff1744 !important;
+            background: rgba(255, 23, 68, 0.4) !important;
+            animation: alertBlink 0.8s infinite alternate;
+            box-shadow: 0 0 20px rgba(255, 23, 68, 0.7);
+        }
+        @keyframes alertBlink {
+            0% { opacity: 0.6; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+        .loading-dots::after {
+            content: '...';
+            animation: dots 1.5s steps(3, end) infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; }
+            33% { content: '.'; }
+            66% { content: '..'; }
+            100% { content: '...'; }
+        }
+        @media (max-width: 600px) {
+            .control-panel button,
+            .control-panel select,
+            .control-panel input {
+                font-size: 0.65rem;
+                padding: 5px 10px;
+                height: 32px;
+            }
+            #reportPopup {
+                bottom: 80px;
+                padding: 14px 16px;
+            }
+            #splash h1 {
+                font-size: 1.8rem;
+            }
+            .station-label {
+                font-size: 0.5rem;
+                padding: 1px 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== شاشة الترحيب ===== -->
+    <div id="splash">
+        <h1>🌳 <span>درع غابات</span> سوريا</h1>
+        <p>غرفة العمليات</p>
+        <div class="loader"></div>
+        <div class="sub">نظام الإنذار المبكر • إرسال البلاغات</div>
+    </div>
+
+    <!-- ===== الخريطة ===== -->
+    <div id="map"></div>
+
+    <!-- ===== حالة الموقع ===== -->
+    <div id="locStatus">📍 جاري التحديث...</div>
+
+    <!-- ===== نافذة البلاغ ===== -->
+    <div id="reportPopup">
+        <h3>🚨 بلاغ حريق نشط</h3>
+        <div class="info-line"><strong>الموقع:</strong> <span id="popupCoords">—</span></div>
+        <div class="info-line"><strong>أقرب منطقة:</strong> <span id="popupNearest">—</span></div>
+        <div class="info-line"><strong>المسافة:</strong> <span id="popupDistance">—</span></div>
+        <div class="info-line"><strong>الاتجاه:</strong> <span id="popupDirection">—</span></div>
+        <div class="info-line"><strong>الرياح:</strong> <span id="popupWind"><span class="loading-dots">جاري التحميل</span></span></div>
+
+        <!-- رابط خرائط جوجل (يظهر عند الضغط على زر النسخ) -->
+        <div class="link-area" id="driverLinkArea">
+            <span id="driverLinkText"></span>
+        </div>
+
+        <div class="actions">
+            <button class="btn-sms-popup" onclick="sendSMS()">📱 SMS</button>
+            <button class="btn-wa-popup" onclick="sendWhatsApp()">💬 واتساب</button>
+            <button class="btn-copy-popup" onclick="copyDriverLink()">🔗 نسخ الرابط</button>
+            <button class="btn-copy-msg-popup" onclick="copyFullMessage()">📋 نسخ الرسالة</button>
+            <button class="btn-close-popup" onclick="closeReport()">✖</button>
+        </div>
+    </div>
+
+    <!-- ===== شريط الأزرار السفلي ===== -->
+    <div class="control-panel">
+        <button class="btn-gps" onclick="locateMe()">📍 موقعي</button>
+        <button class="btn-add" onclick="openAddStation()">➕ إضافة منطقة</button>
+        <button class="btn-sms" onclick="quickSMS()">📱 SMS</button>
+        <button class="btn-wa" onclick="quickWhatsApp()">💬 واتساب</button>
+        <select id="layerSelect">
+            <option value="street">🗺️ شوارع</option>
+            <option value="sat">🛰️ قمر</option>
+        </select>
+    </div>
+
+    <!-- ===== نافذة الأمان ===== -->
+    <div id="addOverlay">
+        <div class="add-box">
+            <h3 id="securityTitle">🔐 رمز الأمان</h3>
+            <p id="securityDesc">أدخل الرمز السري لإضافة منطقة جديدة</p>
+            <input type="password" id="securityInput" placeholder="الرمز السري" maxlength="20" dir="ltr">
+            <div class="error-msg" id="secError">❌ رمز غير صحيح</div>
+            <div class="btn-row">
+                <button class="btn-cancel-add" onclick="closeAddOverlay()">إلغاء</button>
+                <button class="btn-confirm-add" onclick="verifySecurity()">تأكيد</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ============================================================
+        // 0. إزالة شاشة الترحيب
+        // ============================================================
+        setTimeout(() => {
+            document.getElementById('splash').classList.add('hidden');
+        }, 2000);
+
+        // ============================================================
+        // 0.5. دالة تشغيل صوت الإنذار (الميزة الجديدة)
+        // ============================================================
+        function playAlertSound() {
+            try {
+                const ctx = new(window.AudioContext || window.webkitAudioContext)();
+                // صوت صفارة حاد (BEEP) مرتين
+                const playBeep = (freq, duration) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + duration);
+                };
+                playBeep(880, 0.2);
+                setTimeout(() => { playBeep(720, 0.25); }, 250);
+                setTimeout(() => { playBeep(880, 0.2); }, 550);
+                setTimeout(() => { playBeep(600, 0.3); }, 800);
+            } catch (e) {
+                console.log('❌ الصوت غير مدعوم في هذا المتصفح');
+            }
+        }
+
+        // ============================================================
+        // 1. إعداد الخريطة
+        // ============================================================
+        const map = L.map('map', {
+            center: [34.8, 37.5],
+            zoom: 7,
+            zoomControl: true,
+        });
+
+        const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri'
+        });
+        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OSM'
+        });
+        streetLayer.addTo(map);
+
+        document.getElementById('layerSelect').addEventListener('change', function(e) {
+            const val = e.target.value;
+            map.removeLayer(satLayer);
+            map.removeLayer(streetLayer);
+            if (val === 'sat') satLayer.addTo(map);
+            else streetLayer.addTo(map);
+        });
+
+        // ============================================================
+        // 2. بيانات المناطق
+        // ============================================================
+        const STORAGE_KEY = 'darAlGhabaRegions';
+        const defaultRegions = [
+            { name: 'دمشق (المدينة)', lat: 33.5138, lng: 36.2765 },
+            { name: 'ريف دمشق (مركز)', lat: 33.5000, lng: 36.3000 },
+            { name: 'دوما', lat: 33.5717, lng: 36.4025 },
+            { name: 'القطيفة', lat: 33.7333, lng: 36.6000 },
+            { name: 'التل', lat: 33.6100, lng: 36.3100 },
+            { name: 'يبرود', lat: 33.9667, lng: 36.6667 },
+            { name: 'النبك', lat: 34.0167, lng: 36.7333 },
+            { name: 'الزبداني', lat: 33.7167, lng: 36.1000 },
+            { name: 'قطنا', lat: 33.4333, lng: 36.0667 },
+            { name: 'داريا', lat: 33.4500, lng: 36.2333 },
+            { name: 'قدسيا', lat: 33.5333, lng: 36.2167 },
+            { name: 'حلب (مركز)', lat: 36.2021, lng: 37.1343 },
+            { name: 'جبل سمعان', lat: 36.2500, lng: 37.2000 },
+            { name: 'أعزاز', lat: 36.5833, lng: 37.0500 },
+            { name: 'الأتارب', lat: 36.1333, lng: 36.8333 },
+            { name: 'الباب', lat: 36.3833, lng: 37.5167 },
+            { name: 'جرابلس', lat: 36.8167, lng: 38.0000 },
+            { name: 'دير حافر', lat: 36.1500, lng: 37.7000 },
+            { name: 'السفيرة', lat: 36.0667, lng: 37.3667 },
+            { name: 'عفرين', lat: 36.5000, lng: 36.8667 },
+            { name: 'عين العرب (كوباني)', lat: 36.8833, lng: 38.3500 },
+            { name: 'منبج', lat: 36.5333, lng: 37.9500 },
+            { name: 'حمص (مركز)', lat: 34.7268, lng: 36.7171 },
+            { name: 'الرستن', lat: 34.9167, lng: 36.7333 },
+            { name: 'تدمر', lat: 34.5500, lng: 38.2667 },
+            { name: 'المخرم', lat: 34.8167, lng: 37.0833 },
+            { name: 'القصير', lat: 34.5000, lng: 36.5833 },
+            { name: 'تلكلخ', lat: 34.6667, lng: 36.2667 },
+            { name: 'تلدو', lat: 34.8833, lng: 36.5000 },
+            { name: 'حماة (مركز)', lat: 35.1364, lng: 36.7428 },
+            { name: 'السقيلبية', lat: 35.3675, lng: 36.3928 },
+            { name: 'السلمية', lat: 35.0167, lng: 37.0500 },
+            { name: 'محردة', lat: 35.2500, lng: 36.5833 },
+            { name: 'مصياف', lat: 35.0639, lng: 36.3458 },
+            { name: 'سلحب', lat: 35.2500, lng: 36.3833 },
+            { name: 'اللاذقية (مركز)', lat: 35.5314, lng: 35.7904 },
+            { name: 'جبلة', lat: 35.3500, lng: 35.9167 },
+            { name: 'الحفة', lat: 35.5833, lng: 36.0333 },
+            { name: 'القرداحة', lat: 35.4500, lng: 36.0500 },
+            { name: 'طرطوس (مركز)', lat: 34.8833, lng: 35.8833 },
+            { name: 'صافيتا', lat: 34.8167, lng: 36.1167 },
+            { name: 'دريكيش', lat: 34.9000, lng: 36.1000 },
+            { name: 'الشيخ بدر', lat: 34.9833, lng: 36.0833 },
+            { name: 'بانياس', lat: 35.1833, lng: 35.9500 },
+            { name: 'القدموس', lat: 35.1000, lng: 36.1667 },
+            { name: 'إدلب (مركز)', lat: 35.9333, lng: 36.6333 },
+            { name: 'معرة النعمان', lat: 35.6500, lng: 36.6667 },
+            { name: 'أريحا', lat: 35.8167, lng: 36.6000 },
+            { name: 'حارم', lat: 36.2000, lng: 36.5167 },
+            { name: 'جسر الشغور', lat: 35.8167, lng: 36.3167 },
+            { name: 'خان شيخون', lat: 35.4333, lng: 36.6500 },
+            { name: 'الرقة (مركز)', lat: 35.9500, lng: 39.0167 },
+            { name: 'الطبقة', lat: 35.8667, lng: 38.5667 },
+            { name: 'تل أبيض', lat: 36.7000, lng: 38.9500 },
+            { name: 'دير الزور (مركز)', lat: 35.3359, lng: 40.1408 },
+            { name: 'البوكمال', lat: 34.4500, lng: 40.9167 },
+            { name: 'الميادين', lat: 35.0167, lng: 40.4500 },
+            { name: 'الحسكة (مركز)', lat: 36.5000, lng: 40.7500 },
+            { name: 'القامشلي', lat: 37.0500, lng: 41.2167 },
+            { name: 'المالكية', lat: 37.1667, lng: 42.1333 },
+            { name: 'رأس العين', lat: 36.8500, lng: 40.0667 },
+            { name: 'الشدادي', lat: 36.0667, lng: 40.7333 },
+            { name: 'درعا (مركز)', lat: 32.6167, lng: 36.1000 },
+            { name: 'إزرع', lat: 32.8667, lng: 36.2500 },
+            { name: 'الصنمين', lat: 33.0667, lng: 36.1833 },
+            { name: 'بصرى الشام', lat: 32.5167, lng: 36.4833 },
+            { name: 'نوى', lat: 32.8833, lng: 36.0333 },
+            { name: 'السويداء (مركز)', lat: 32.7000, lng: 36.5667 },
+            { name: 'شهبا', lat: 32.8500, lng: 36.6333 },
+            { name: 'صلخد', lat: 32.4833, lng: 36.7167 },
+            { name: 'القنيطرة (مركز)', lat: 33.1167, lng: 35.8167 },
+            { name: 'فيق', lat: 32.7833, lng: 35.7000 }
+        ];
+
+        let regions = [];
+        // متغير لتخزين ID المنطقة المبلغ عنها حالياً (لتغيير لونها)
+        let activeReportRegionId = null;
+
+        function loadRegions() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    regions = JSON.parse(saved);
+                    const existingNames = new Set(regions.map(r => r.name));
+                    defaultRegions.forEach(dr => {
+                        if (!existingNames.has(dr.name)) {
+                            regions.push({ ...dr, id: Date.now() + Math.random() * 1000 });
+                        }
+                    });
+                } catch (e) {
+                    regions = defaultRegions.map(r => ({ ...r, id: Date.now() + Math.random() * 1000 }));
+                }
+            } else {
+                regions = defaultRegions.map(r => ({ ...r, id: Date.now() + Math.random() * 1000 }));
+            }
+            saveRegions();
+            return regions;
+        }
+
+        function saveRegions() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(regions));
+        }
+
+        function addRegion(name, lat, lng) {
+            const newRegion = {
+                id: Date.now(),
+                name: name.trim() || 'منطقة جديدة',
+                lat: lat,
+                lng: lng
+            };
+            regions.push(newRegion);
+            saveRegions();
+            renderRegions();
+            return newRegion;
+        }
+
+        // ============================================================
+        // 3. عرض المناطق (مع دعم التمييز للمنطقة المبلغ عنها)
+        // ============================================================
+        let regionLayer = L.layerGroup().addTo(map);
+
+        function renderRegions() {
+            regionLayer.clearLayers();
+            regions.forEach(r => {
+                // تحديد إذا كانت هذه المنطقة هي المبلغ عنها حالياً
+                const isActive = (activeReportRegionId === r.id);
+                const labelClass = isActive ? 'station-label active-alert' : 'station-label';
+                const iconHtml = `
+                        <div style="display:flex;flex-direction:column;align-items:center;background:transparent;border:none;">
+                            <span style="font-size:1.8rem;filter:drop-shadow(0 2px 6px rgba(255,100,0,0.6));">${isActive ? '🚨' : '🚒'}</span>
+                            <span class="${labelClass}">${r.name} ${isActive ? '⚠️' : ''}</span>
+                        </div>
+                    `;
+                const icon = L.divIcon({
+                    className: 'custom-station-icon',
+                    html: iconHtml,
+                    iconSize: [48, 45],
+                    iconAnchor: [24, 38],
+                    popupAnchor: [0, -30]
+                });
+                const marker = L.marker([r.lat, r.lng], { icon: icon })
+                    .addTo(regionLayer)
+                    .bindPopup(`
+                            <div style="direction:rtl;text-align:center;">
+                                <b>${r.name}</b><br>
+                                <small>${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</small><br>
+                                ${isActive ? '<span style="color:#ff1744;font-weight:bold;">🔴 بلاغ نشط هنا!</span><br>' : ''}
+                                <button onclick="deleteRegion(${r.id})" style="background:#c62828;color:#fff;border:none;padding:2px 16px;border-radius:20px;margin-top:5px;cursor:pointer;font-size:0.8rem;">✖ حذف</button>
+                            </div>
+                        `);
+            });
+        }
+
+        // ============================================================
+        // 4. الحذف والإضافة
+        // ============================================================
+        let pendingDeleteId = null;
+
+        function deleteRegion(id) {
+            pendingDeleteId = id;
+            document.getElementById('securityTitle').textContent = '🔐 تأكيد الحذف';
+            document.getElementById('securityDesc').textContent = 'أدخل الرمز السري لتأكيد حذف هذه المنطقة';
+            document.getElementById('secError').style.display = 'none';
+            document.getElementById('securityInput').value = '';
+            document.getElementById('addOverlay').classList.add('active');
+            document.getElementById('securityInput').focus();
+        }
+
+        const SECRET_CODE = '9111977';
+
+        function openAddStation() {
+            pendingDeleteId = null;
+            document.getElementById('securityTitle').textContent = '🔐 رمز الأمان';
+            document.getElementById('securityDesc').textContent = 'أدخل الرمز السري لإضافة منطقة جديدة';
+            document.getElementById('secError').style.display = 'none';
+            document.getElementById('securityInput').value = '';
+            document.getElementById('addOverlay').classList.add('active');
+            document.getElementById('securityInput').focus();
+        }
+
+        function closeAddOverlay() {
+            document.getElementById('addOverlay').classList.remove('active');
+            pendingDeleteId = null;
+        }
+
+        function verifySecurity() {
+            const code = document.getElementById('securityInput').value.trim();
+            if (code !== SECRET_CODE) {
+                document.getElementById('secError').style.display = 'block';
+                document.getElementById('securityInput').value = '';
+                document.getElementById('securityInput').focus();
+                return;
+            }
+            document.getElementById('secError').style.display = 'none';
+            closeAddOverlay();
+
+            if (pendingDeleteId !== null) {
+                const id = pendingDeleteId;
+                pendingDeleteId = null;
+                regions = regions.filter(r => r.id !== id);
+                saveRegions();
+                renderRegions();
+                document.getElementById('securityTitle').textContent = '🔐 رمز الأمان';
+                document.getElementById('securityDesc').textContent = 'أدخل الرمز السري لإضافة منطقة جديدة';
+                alert('✅ تم حذف المنطقة بنجاح');
+            } else {
+                const name = prompt('📝 أدخل اسم المنطقة الجديدة:', 'منطقة جديدة');
+                if (name === null || name.trim() === '') return;
+                const latInput = prompt('📍 أدخل خط العرض (مثال: 35.1234):', '35.0');
+                if (latInput === null) return;
+                const lngInput = prompt('📍 أدخل خط الطول (مثال: 36.5678):', '36.0');
+                if (lngInput === null) return;
+                const lat = parseFloat(latInput);
+                const lng = parseFloat(lngInput);
+                if (isNaN(lat) || isNaN(lng) || lat < 32 || lat > 38 || lng < 35 || lng > 43) {
+                    alert('⚠️ إحداثيات غير صالحة (يجب أن تكون ضمن سوريا تقريباً)');
+                    return;
+                }
+                addRegion(name.trim(), lat, lng);
+                alert('✅ تم إضافة المنطقة بنجاح');
+            }
+        }
+
+        document.getElementById('securityInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') verifySecurity();
+        });
+
+        // ============================================================
+        // 5. حساب المسافة والاتجاه
+        // ============================================================
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        function getBearing(lat1, lon1, lat2, lon2) {
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+            const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+            let brng = Math.atan2(y, x) * 180 / Math.PI;
+            return (brng + 360) % 360;
+        }
+
+        function getDirectionName(bearing) {
+            const dirs = ['شمال', 'شمال شرق', 'شرق', 'جنوب شرق', 'جنوب', 'جنوب غرب', 'غرب', 'شمال غرب'];
+            const idx = Math.round(bearing / 45) % 8;
+            return dirs[idx];
+        }
+
+        function getNearestRegion(lat, lng) {
+            let nearest = null,
+                minDist = Infinity;
+            regions.forEach(r => {
+                const d = haversine(lat, lng, r.lat, r.lng);
+                if (d < minDist) { minDist = d;
+                    nearest = r; }
+            });
+            return nearest;
+        }
+
+        // ============================================================
+        // 6. جلب بيانات الطقس
+        // ============================================================
+        async function fetchWeather(lat, lng) {
+            try {
+                const url = `https://wttr.in/${lat},${lng}?format=j1&lang=ar`;
+                const response = await fetch(url, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) throw new Error('فشل جلب الطقس');
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('خطأ في جلب الطقس:', error);
+                return null;
+            }
+        }
+
+        function formatWind(data) {
+            if (!data || !data.current_condition || data.current_condition.length === 0) {
+                return 'غير متاح';
+            }
+            const current = data.current_condition[0];
+            const speed = current.windspeedKmph || '?';
+            const dir = current.winddir16Point || '?';
+            return `${speed} كم/س (${dir})`;
+        }
+
+        // ============================================================
+        // 7. النقر على الخريطة -> عرض البلاغ + صوت + تمييز المنطقة
+        // ============================================================
+        let currentLat = 34.8,
+            currentLng = 37.5;
+        let lastClickedLat = null,
+            lastClickedLng = null;
+        let userMarker = null;
+        let currentNearestName = '';
+
+        map.on('click', function(e) {
+            closeReport(); // إغلاق البلاغ السابق وإزالة التمييز القديم
+            const lat = e.latlng.lat,
+                lng = e.latlng.lng;
+            lastClickedLat = lat;
+            lastClickedLng = lng;
+            currentLat = lat;
+            currentLng = lng;
+
+            const nearest = getNearestRegion(lat, lng);
+            currentNearestName = nearest ? nearest.name : 'لا توجد مناطق';
+
+            // ** تحديث المنطقة المبلغ عنها (لتمييزها باللون الأحمر الوامض) **
+            if (nearest) {
+                activeReportRegionId = nearest.id;
+            } else {
+                activeReportRegionId = null;
+            }
+            renderRegions(); // إعادة رسم الخريطة مع التمييز الجديد
+
+            const dist = nearest ? haversine(lat, lng, nearest.lat, nearest.lng) : null;
+            let direction = '—';
+            if (nearest) {
+                const bearing = getBearing(lat, lng, nearest.lat, nearest.lng);
+                direction = getDirectionName(bearing);
+            }
+
+            document.getElementById('popupCoords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            document.getElementById('popupNearest').textContent = currentNearestName;
+            document.getElementById('popupDistance').textContent = dist ? dist.toFixed(2) + ' كم' : '—';
+            document.getElementById('popupDirection').textContent = direction;
+            document.getElementById('popupWind').innerHTML = '<span class="loading-dots">جاري التحميل</span>';
+            document.getElementById('driverLinkArea').classList.remove('show');
+
+            document.getElementById('reportPopup').classList.add('show');
+
+            // ** تشغيل صوت الإنذار 🔊 **
+            playAlertSound();
+
+            if (userMarker) map.removeLayer(userMarker);
+            userMarker = L.marker([lat, lng], {
+                icon: L.divIcon({ className: '', html: '📍', iconSize: [30, 30], iconAnchor: [15, 30] })
+            }).addTo(map);
+
+            fetchWeather(lat, lng).then(weather => {
+                const windStr = weather ? formatWind(weather) : 'غير متاح (فشل الاتصال)';
+                document.getElementById('popupWind').textContent = windStr;
+            }).catch(() => {
+                document.getElementById('popupWind').textContent = 'غير متاح (خطأ)';
+            });
+        });
+
+        // ============================================================
+        // 8. بناء رابط خرائط جوجل (تم التعديل هنا)
+        // ============================================================
+        function getDriverAppLink(lat, lng, name) {
+            // رابط خرائط جوجل المباشر لعرض الإحداثيات
+            return `https://www.google.com/maps?q=${lat},${lng}`;
+        }
+
+        function getReportMessage() {
+            const lat = currentLat,
+                lng = currentLng;
+            const nearest = getNearestRegion(lat, lng);
+            const name = nearest ? nearest.name : '—';
+            const dist = nearest ? haversine(lat, lng, nearest.lat, nearest.lng).toFixed(2) + ' كم' : 'غير معروف';
+            let direction = '—';
+            if (nearest) {
+                const bearing = getBearing(lat, lng, nearest.lat, nearest.lng);
+                direction = getDirectionName(bearing);
+            }
+            const windText = document.getElementById('popupWind').textContent || '—';
+            const driverLink = getDriverAppLink(lat, lng, name);
+
+            return `🚨 بلاغ حريق - درع الغابة
+📍 الموقع: ${lat.toFixed(5)}, ${lng.toFixed(5)}
+🔗 رابط الموقع على الخريطة (افتحه للعرض): ${driverLink}
+🏢 أقرب منطقة: ${name}
+📏 المسافة: ${dist}
+🧭 الاتجاه: ${direction}
+🌬️ الرياح: ${windText}`;
+        }
+
+        // ============================================================
+        // 9. دوال الإرسال والنسخ
+        // ============================================================
+        function sendSMS() {
+            const msg = getReportMessage();
+            window.location.href = 'sms:?body=' + encodeURIComponent(msg);
+            closeReport();
+        }
+
+        function sendWhatsApp() {
+            const msg = getReportMessage();
+            window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+            closeReport();
+        }
+
+        function copyDriverLink() {
+            const lat = currentLat,
+                lng = currentLng;
+            const nearest = getNearestRegion(lat, lng);
+            const name = nearest ? nearest.name : 'حريق';
+            const link = getDriverAppLink(lat, lng, name);
+
+            const area = document.getElementById('driverLinkArea');
+            const textSpan = document.getElementById('driverLinkText');
+            textSpan.textContent = link;
+            area.classList.add('show');
+
+            navigator.clipboard.writeText(link).then(() => {
+                alert('✅ تم نسخ رابط خرائط جوجل إلى الحافظة!');
+            }).catch(() => {
+                const range = document.createRange();
+                range.selectNode(textSpan);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                document.execCommand('copy');
+                alert('✅ تم النسخ! يمكنك لصق الرابط في أي تطبيق.');
+            });
+        }
+
+        // ** الميزة الجديدة: نسخ الرسالة الكاملة للإرسال الجماعي **
+        function copyFullMessage() {
+            const msg = getReportMessage();
+            navigator.clipboard.writeText(msg).then(() => {
+                alert('✅ تم نسخ نص البلاغ بالكامل إلى الحافظة! يمكنك لصقه في مجموعة واتساب.');
+            }).catch(() => {
+                // طريقة بديلة للنسخ
+                const textarea = document.createElement('textarea');
+                textarea.value = msg;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('✅ تم نسخ الرسالة!');
+            });
+        }
+
+        function closeReport() {
+            document.getElementById('reportPopup').classList.remove('show');
+            document.getElementById('driverLinkArea').classList.remove('show');
+            // إزالة تمييز المنطقة المبلغ عنها
+            if (activeReportRegionId !== null) {
+                activeReportRegionId = null;
+                renderRegions();
+            }
+        }
+
+        function quickSMS() {
+            if (!lastClickedLat) { alert('الرجاء النقر على الخريطة أولاً'); return; }
+            currentLat = lastClickedLat;
+            currentLng = lastClickedLng;
+            sendSMS();
+        }
+
+        function quickWhatsApp() {
+            if (!lastClickedLat) { alert('الرجاء النقر على الخريطة أولاً'); return; }
+            currentLat = lastClickedLat;
+            currentLng = lastClickedLng;
+            sendWhatsApp();
+        }
+
+        // ============================================================
+        // 10. تحديد الموقع GPS
+        // ============================================================
+        function locateMe() {
+            const status = document.getElementById('locStatus');
+            status.style.display = 'block';
+            status.textContent = '📡 جاري التحديد...';
+            if (!navigator.geolocation) {
+                status.textContent = '❌ GPS غير مدعوم';
+                setTimeout(() => status.style.display = 'none', 3000);
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    const lat = pos.coords.latitude,
+                        lng = pos.coords.longitude;
+                    currentLat = lat;
+                    currentLng = lng;
+                    lastClickedLat = lat;
+                    lastClickedLng = lng;
+                    if (userMarker) map.removeLayer(userMarker);
+                    userMarker = L.marker([lat, lng], {
+                        icon: L.divIcon({ className: '', html: '📍', iconSize: [30, 30], iconAnchor: [15, 30] })
+                    }).addTo(map);
+                    map.flyTo([lat, lng], 12);
+                    status.textContent = '✅ تم التحديد';
+                    setTimeout(() => status.style.display = 'none', 3000);
+                },
+                function() {
+                    status.textContent = '❌ فشل التحديد';
+                    setTimeout(() => status.style.display = 'none', 3000);
+                }, { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        // ============================================================
+        // 11. إغلاق النوافذ بالضغط على ESC
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { closeReport();
+                closeAddOverlay(); }
+        });
+
+        // ============================================================
+        // 12. التهيئة النهائية
+        // ============================================================
+        loadRegions();
+        renderRegions();
+        console.log('✅ درع غابات سوريا - غرفة العمليات (رابط خرائط جوجل)');
+        console.log(`📌 عدد المناطق: ${regions.length}`);
+        console.log('🔐 رمز الأمان: 9111977');
+    </script>
+</body>
+</html>
